@@ -1,0 +1,131 @@
+
+?start      : cmd   //文法のトップ、全ての入力文字列はここを起点に解析される
+
+cmd         : (statement "," )*
+
+
+// こういう感じ
+//   ec "\\emp" "ss" 99
+//               ((((T True 1 modifiableS `SL` (T True 1 modifiableS `BS` NP [F[Nc]])) `BS` NP [F[No]]) `BS` NP [F[No]]) `BS` ((defS [VSN] [Stem] `BS` NP [F [Ga]]) `BS` NP [F [O]]))
+//               ((Lam (Lam (Lam (Lam (Lamvec (App (App (App (Var 4) (Var 3)) (Var 2)) (Lam (Appvec 1 (App (Var 2) (Var 0)))))))))),[]),
+//   ec "rel" "(670)" 99
+//               ((N `SL` N) `BS` (S [F anyPos, F[Attr], F[P,M],F[P,M],F[P,M],F[M],F[M]] `BS` NP [F[Ga,O,Ni,To]]))
+//               ((Lam (Lam (Lam (Lam (Sigma (App (App (Var 3) (Var 1)) (Lam Top)) (App (App (Var 3) (Var 2)) (Var 1))))))),[]),
+
+statement : ec_declaration | mylex2_declaration | mylex_declaration | conjsuffix_declaration | verblex_declaration | conjnsuffix_declaration
+ec_declaration : "ec" name source value cat sem_decl ","?
+mylex2_declaration : "mylex'" string_array source value cat sem_decl ","?
+mylex_declaration : "mylex" string_array source cat sem_decl ","?
+// 厳密には2つ目はfeaturevaluesではないのだが、間に合わせ
+conjsuffix_declaration : "conjSuffix" name source featurevalues featurevalues ","?
+conjnsuffix_declaration : "conjNSuffix" name source featurevalues featurevalues ","?
+verblex_declaration : "verblex" string_array source featurevalues featurevalues STRING STRING sem ","?
+
+string_array: "[" (STRING ","?)* "]"
+
+id: /[a-zA-Z_][a-zA-Z0-9_]*/
+name: STRING
+source: STRING
+value: NUMBER
+cat:  bs_cat
+    | sl_cat
+    | "(" cat ")"
+    | t_cat
+    | np_cat
+    | s_cat
+    | sbar_cat
+    | defs_cat
+    | modifiables_cat
+    | n_cat
+    | conj_cat
+    | lparen_cat
+    | rparen_cat
+
+sl_cat: cat "`SL`" cat
+bs_cat: cat "`BS`" cat
+t_cat: "T" BOOL NUMBER cat
+np_cat: "NP" features
+s_cat: "S" features
+sbar_cat: "Sbar" features
+defs_cat : "defS" featurevalues featurevalues
+modifiables_cat: "modifiableS" 
+n_cat: "N"
+conj_cat: "CONJ"
+lparen_cat: "LPAREN"
+rparen_cat: "RPAREN"
+
+
+features: "(" features ("++" features)* ")"
+    |"[" (feature ","?)+ "]"
+    | mmmpm_features
+    | m5_features
+    | mmpmm_features
+    | mpmmm_features
+    | mppmm_features
+feature: f_feature | sf_feature
+
+mmmpm_features : "mmmpm"
+m5_features : "m5"
+mmpmm_features: "mmpmm"
+mpmmm_features: "mpmmm"
+mppmm_features: "mppmm"
+
+f_feature: "F" featurevalues
+sf_feature: "SF" NUMBER featurevalues
+featurevalues:  "(" featurevalues ("++" featurevalues)* ")"
+                | /\[[A-Za-z0-9,\s?]+\]/
+                | anypos_fvs
+                | verb_fvs
+                | adjective_fvs
+                | nompred_fvs
+                | nonstem_fvs
+                
+anypos_fvs : "anyPos"
+verb_fvs : "verb"
+adjective_fvs : "adjective"
+nompred_fvs : "nomPred"
+nonstem_fvs: "nonStem"
+
+
+sem_decl: "(" sem "," sig_list ")" 
+        | "argumentCM" | "andSR" | "orSR" | "negOperator" | "negOperator2"
+        | "(" id STRING ")"
+        | "(" id NUMBER STRING ")"
+        | "(" "verbSR" STRING sem STRING ")"
+sem : sem
+    | "(" sem ")"
+    | "Lam" sem
+    | "App" sem sem
+    | "Appvec" NUMBER sem
+    | "Lamvec" sem
+    | "Var" NUMBER
+    | "Sigma" sem sem
+    | "Proj" sem sem
+    | "Eq" id sem sem
+    | "Con" STRING
+    | "Asp" NUMBER sem
+    | "Not" sem
+    | "Pi" sem sem
+    | "Top" | "Fst" | "Unit"
+    | "entity" | "event" | "state" | "Type" 
+    | "id"
+
+sig_list: "[" (sig_tuple ","?) * "]"
+sig_tuple : "(" STRING "," sem ")"
+
+BOOL : "True" | "False"
+
+COMMENT: "--" /[^\n]*/ NEWLINE
+
+%ignore COMMENT
+
+%import common.ESCAPED_STRING   -> STRING
+%import common.SIGNED_NUMBER    -> NUMBER
+%import common.NEWLINE    -> NEWLINE
+
+%import common.WS
+%ignore WS
+
+
+
+

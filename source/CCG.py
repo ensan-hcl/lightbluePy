@@ -5,71 +5,14 @@ from typing import TypeVar, Optional
 
 import cat
 import feature
+from node import Node, RuleSymbol
 from cat import Cat
 from assignment import SubstData, Assignment, SubstLink, SubstVal
 from feature import Feature
 from feature import FeatureValue as FV
 
-from leixcon.lexicon import constructPredicate
-
-
-class RuleSymbol(Enum):
-    """The name of the CCG rule to derive the node."""
-
-    LEX = 0
-    """A lexical item"""
-
-    EC = 1
-    """An empty category"""
-    FFA = 2
-    """Forward function application rule."""
-    BFA = 3
-    """Backward function application rule"""
-    FFC1 = 4
-    """Forward function composition rule 1"""
-    BFC1 = 5
-    """Backward function composition rule 1"""
-    FFC2 = 6
-    """Forward function composition rule 2"""
-    BFC2 = 7
-    """Backward function composition rule 2"""
-    FFC3 = 8
-    """Forward function composition rule 3"""
-    BFC3 = 9
-    """Backward function composition rule 3"""
-    FFCx1 = 10
-    """Forward function crossed composition rule 1"""
-    FFCx2 = 11
-    """Forward function crossed composition rule 2"""
-    FFSx = 12
-    """Forward function crossed substitution rule"""
-    COORD = 13
-    """Coordination rule"""
-    PAREN = 14
-    """Parenthesis rule"""
-    WRAP = 15
-    """Wrap rule"""
-    DC = 16
-    """Dynamic conjunction rule"""
-    DREL = 17
-    """Discourse Relation rule"""
-
-
-@dataclass
-class Node:
-    rs: RuleSymbol
-    pf: str
-    cat: Cat
-    # sem: Preterm
-    # sig: Signature
-    daughters: list["Node"]
-    score: float
-    source: str
-
-    def __eq__(self, __value: object) -> bool:
-        if not isinstance(__value, Node):
-            return False
-        return self.rs == __value.rs and self.pf == __value.pf and self.cat == __value.cat and self.daughters == __value.daughters and self.score == __value.score and self.source == __value.source
+from lexicon.lexicon import constructPredicate
+from lexicon.myLexicon import load
 
 
 def unifiable(f1: list[Feature], f2: list[Feature]) -> bool:
@@ -125,9 +68,9 @@ def isTNoncaseNP(c: Cat) -> bool:
 def isNoncaseNP(c: Cat) -> bool:
     """A test to check if a given category is NPnc."""
     match c:
-        case cat.NP([feature.F([v, *_])]):
+        case cat.NP([feature.F(v), *_]):
             return FV.Nc in v
-        case cat.NP([feature.SF(_, [_, v, *_])]):
+        case cat.NP([feature.SF(_, v), *_]):
             return FV.Nc in v
         case _:
             return False
@@ -328,7 +271,8 @@ def backwardFunctionComposition1Rule(lnode: Node, rnode: Node, prevlist: list[No
                 lnode.score * rnode.score,
                 "",
             )] + prevlist
-        case _: return prevlist
+        case _:
+            return prevlist
 
 
 def forwardFunctionComposition2Rule(lnode: Node, rnode: Node, prevlist: list[Node]) -> list[Node]:
@@ -437,7 +381,7 @@ def forwardFunctionCrossedComposition1Rule(lnode: Node, rnode: Node, prevlist: l
                 lnode.pf + rnode.pf,
                 newcat,
                 [lnode, rnode],
-                lnode.score * rnode.score * 0.01,
+                lnode.score * rnode.score * 1,
                 "",
             )] + prevlist
         case _: return prevlist
@@ -468,9 +412,10 @@ def forwardFunctionCrossedComposition2Rule(lnode: Node, rnode: Node, prevlist: l
                 lnode.pf + rnode.pf,
                 newcat,
                 [lnode, rnode],
-                lnode.score * rnode.score * 0.01,
+                lnode.score * rnode.score * 1,
                 "",
             )] + prevlist
+        case _: return prevlist
 
 
 def forwardFunctionCrossedSubstitutionRule(lnode: Node, rnode: Node, prevlist: list[Node]) -> list[Node]:
@@ -498,9 +443,10 @@ def forwardFunctionCrossedSubstitutionRule(lnode: Node, rnode: Node, prevlist: l
                 lnode.pf + rnode.pf,
                 newcat,
                 [lnode, rnode],
-                lnode.score * rnode.score * 0.01,
+                lnode.score * rnode.score,
                 "",
             )] + prevlist
+        case _: return prevlist
 
 
 def coordinationRule(lnode: Node, cnode: Node, rnode: Node, prevlist: list[Node]) -> list[Node]:
@@ -560,23 +506,12 @@ def maximumIndexC(c: Cat) -> int:
         case _: return 0
 
 
-"""
-maximumIndexF :: [Feature] -> Int
-maximumIndexF fs = case fs of
-  [] -> 0
-  ((SF i _):fs2) -> max i (maximumIndexF fs2)
-  (_:fs2) -> maximumIndexF fs2
-"""
-
-
 def maximumIndexF(fs: list[Feature]) -> int:
-    match fs:
-        case []:
-            return 0
-        case [feature.SF(i, _), *fs2]:
-            return max(i, maximumIndexF(fs2))
-        case [_, *fs2]:
-            return maximumIndexF(fs2)
+    m = 0
+    for f in fs:
+        if isinstance(f, feature.SF):
+            m = max(m, f.index)
+    return m
 
 
 def incrementIndexC(c: Cat, i: int) -> Cat:
@@ -607,7 +542,7 @@ def incrementIndexF(fs: list[Feature], i: int) -> list[Feature]:
 
 
 def alter(i: int, v: int, mp: list[tuple[int, int]]) -> list[tuple[int, int]]:
-    return [(i, v)] + list(filter(lambda j: i != j, mp))
+    return [(i, v)] + list(filter(lambda pair: i != pair[0], mp))
 
 
 T1 = TypeVar("T1")
@@ -617,11 +552,14 @@ def fetchValue(sub: Assignment[T1], i: int, v: int) -> tuple[int, T1]:
     result = list(filter(lambda pair: i == pair[0], sub))
     if not result:
         return (i, v)
+    assert len(result) == 1
 
     match result[0]:
         case SubstLink(j):
             if j < i:
                 return fetchValue(sub, j, v)
+            else:
+                return (i, v)
         # SubstVal[T1]の場合の処理
         case SubstVal(v2):
             return (i, v2)
@@ -669,61 +607,93 @@ def unifyCategory2(csub: Assignment[Cat], fsub: Assignment[list[FV]], banned: li
             ijmax = max(i, j)
             ijmin = min(i, j)
             if f1 and f2:
-                (u3, csub2, fsub2) = unifyCategory2(
-                    csub, fsub, [ijmin]+banned, u1, u2)
+                res = unifyCategory2(csub, fsub, [ijmin]+banned, u1, u2)
+                if res is None:
+                    return None
+                (u3, csub2, fsub2) = res
             elif f1:
-                (u3, csub2, fsub2) = unifyWithHead(
-                    csub, fsub, [ijmin]+banned, u1, u2)
+                res = unifyWithHead(csub, fsub, [ijmin]+banned, u1, u2)
+                if res is None:
+                    return None
+                (u3, csub2, fsub2) = res
             elif f2:
-                (u3, csub2, fsub2) = unifyWithHead(
-                    csub, fsub, [ijmin]+banned, u2, u1)
+                res = unifyWithHead(csub, fsub, [ijmin]+banned, u2, u1)
+                if res is None:
+                    return None
+                (u3, csub2, fsub2) = res
             else:
-                (u3, csub2, fsub2) = unifyCategory2(
-                    csub, fsub, [ijmin]+banned, u1, u2)
+                res = unifyCategory2(csub, fsub, [ijmin]+banned, u1, u2)
+                if res is None:
+                    return None
+                (u3, csub2, fsub2) = res
             result = cat.T(f1 and f2, ijmin, u3)
             return (result, alter(ijmin, SubstVal(result), alter(ijmax, SubstLink(ijmin), csub2)), fsub2)
         case (cat.T(f, i, u), _):
             if i in banned:
                 return None
+
+            if f:
+                res = unifyWithHead(csub, fsub, [i]+banned, u, c2)
+                if res is None:
+                    return None
+                (c3, csub2, fsub2) = res
             else:
-                if f:
-                    (c3, csub2, fsub2) = unifyWithHead(
-                        csub, fsub, [i]+banned, u, c2)
-                else:
-                    (c3, csub2, fsub2) = unifyCategory(
-                        csub, fsub, [i]+banned, u, c2)
-                return (c3, alter(i, SubstVal(c3), csub2), fsub2)
+                res = unifyCategory(csub, fsub, [i]+banned, u, c2)
+                if res is None:
+                    return None
+                (c3, csub2, fsub2) = res
+            return (c3, alter(i, SubstVal(c3), csub2), fsub2)
         case (_, cat.T(f, i, u)):
             if i in banned:
                 return None
+            if f:
+                res = unifyWithHead(csub, fsub, [i]+banned, u, c1)
+                if res is None:
+                    return None
+                (c3, csub2, fsub2) = res
             else:
-                if f:
-                    (c3, csub2, fsub2) = unifyWithHead(
-                        csub, fsub, [i] + banned, u, c1)
-                else:
-                    (c3, csub2, fsub2) = unifyCategory(
-                        csub, fsub, [i] + banned, u, c1)
-                return (c3, alter(i, SubstVal(c3), csub2), fsub2)
+                res = unifyCategory(csub, fsub, [i]+banned, u, c1)
+                if res is None:
+                    return None
+                (c3, csub2, fsub2) = res
+            return (c3, alter(i, SubstVal(c3), csub2), fsub2)
         case (cat.NP(f1), cat.NP(f2)):
-            (f3, fsub2) = unifyFeatures(fsub, f1, f2)
+            res = unifyFeatures(fsub, f1, f2)
+            if res is None:
+                return None
+            (f3, fsub2) = res
             return (cat.NP(f3), csub, fsub2)
         case (cat.S(f1), cat.S(f2)):
-            (f3, fsub2) = unifyFeatures(fsub, f1, f2)
+            res = unifyFeatures(fsub, f1, f2)
+            if res is None:
+                return None
+            (f3, fsub2) = res
             return (cat.S(f3), csub, fsub2)
         case (cat.Sbar(f1), cat.Sbar(f2)):
-            (f3, fsub2) = unifyFeatures(fsub, f1, f2)
+            res = unifyFeatures(fsub, f1, f2)
+            if res is None:
+                return None
+            (f3, fsub2) = res
             return (cat.Sbar(f3), csub, fsub2)
         case (cat.SL(c3, c4), cat.SL(c5, c6)):
-            (c7, csub2, fsub2) = unifyCategory(
-                csub, fsub, banned, c4, c6)
-            (c8, csub3, fsub3) = unifyCategory(
-                csub2, fsub2, banned, c3, c5)
+            res = unifyCategory(csub, fsub, banned, c4, c6)
+            if res is None:
+                return None
+            (c7, csub2, fsub2) = res
+            res = unifyCategory(csub2, fsub2, banned, c3, c5)
+            if res is None:
+                return None
+            (c8, csub3, fsub3) = res
             return (cat.SL(c8, c7), csub3, fsub3)
         case (cat.BS(c3, c4), cat.BS(c5, c6)):
-            (c7, csub2, fsub2) = unifyCategory(
-                csub, fsub, banned, c4, c6)
-            (c8, csub3, fsub3) = unifyCategory(
-                csub2, fsub2, banned, c3, c5)
+            res = unifyCategory(csub, fsub, banned, c4, c6)
+            if res is None:
+                return None
+            (c7, csub2, fsub2) = res
+            res = unifyCategory(csub2, fsub2, banned, c3, c5)
+            if res is None:
+                return None
+            (c8, csub3, fsub3) = res
             return (cat.BS(c8, c7), csub3, fsub3)
         case (cat.N, cat.N):
             return (cat.N, csub, fsub)
@@ -743,15 +713,24 @@ def unifyWithHead(csub: Assignment[cat.Cat], fsub: Assignment[list[FV]], banned:
     """
     match c2:
         case cat.SL(x, y):
-            x2, csub2, fsub2 = unifyWithHead(csub, fsub, banned, c1, x)
+            res = unifyWithHead(csub, fsub, banned, c1, x)
+            if res is None:
+                return None
+            x2, csub2, fsub2 = res
             return (cat.SL(x2, y), csub2, fsub2)
         case cat.BS(x, y):
-            x2, csub2, fsub2 = unifyWithHead(csub, fsub, banned, c1, x)
+            res = unifyWithHead(csub, fsub, banned, c1, x)
+            if res is None:
+                return None
+            x2, csub2, fsub2 = res
             return (cat.BS(x2, y), csub2, fsub2)
         case cat.T(f, i, u):
             if i in banned:
                 return None
-            (x2, csub2, fsub2) = unifyCategory(csub, fsub, [i]+banned, c1, u)
+            res = unifyCategory(csub, fsub, [i]+banned, c1, u)
+            if res is None:
+                return None
+            (x2, csub2, fsub2) = res
             return (cat.T(f, i, x2), alter(i, SubstVal(cat.T(f, i, x2)), csub2), fsub2)
         case _: return unifyCategory(csub, fsub, banned, c1, c2)
 
@@ -815,10 +794,38 @@ def unifyFeatures(fsub: Assignment[list[FV]], f1: list[Feature], f2: list[Featur
         case ([], []):
             return ([], fsub)
         case ((f1h, *f1t), (f2h, *f2t)):
-            f3h, fsub2 = unifyFeature(fsub, f1h, f2h)
-            f3t, fsub3 = unifyFeatures(fsub2, f1t, f2t)
+            res = unifyFeature(fsub, f1h, f2h)
+            if res is None:
+                return None
+            f3h, fsub2 = res
+            res = unifyFeatures(fsub2, f1t, f2t)
+            if res is None:
+                return None
+            f3t, fsub3 = res
             return ([f3h, f3t], fsub3)
         case _: return None
+
+
+def wrapNode(node: Node) -> Node:
+    return Node(
+        rs=RuleSymbol.WRAP,
+        pf=node.pf,
+        cat=cat.Sbar([feature.F([FV.Decl])]),
+        daughters=[node],
+        score=node.score * 0.9,
+        source="",
+    )
+
+
+def conjoinNodes(lnode: Node, rnode: Node) -> Node:
+    return Node(
+        rs=RuleSymbol.DC,
+        pf=lnode.pf + rnode.pf,
+        cat=cat.Sbar([feature.F([FV.Decl])]),
+        daughters=[lnode, rnode],
+        score=lnode.score * rnode.score,
+        source="",
+    )
 
 
 def testFFA():
@@ -940,7 +947,7 @@ def testBFC():
     lnode = Node(
         rs=RuleSymbol.LEX,
         pf="長い",
-        cat=constructPredicate("長い", [FV.Ai], [FV.Term, FV.Attr]),
+        cat=constructPredicate("長い", [FV.Ai], [FV.Term, FV.Attr])[0],
         daughters=[],
         score=-4,
         source=""
@@ -969,10 +976,6 @@ def testBFC():
 
 
 if __name__ == "__main__":
-    np = cat.NP([])
-    sbar = cat.Sbar([])
-    t = cat.T(False, 0, sbar)
-    sl = cat.SL(np, t)
     testFFA()
     testBFA()
     testFFC()
