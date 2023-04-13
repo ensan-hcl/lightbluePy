@@ -60,15 +60,15 @@ def verbCat_(caseframe: str, ct: cat.Cat) -> cat.Cat:
     c = caseframe[0]
     cs = caseframe[1:]
     if c == 'ガ':
-        return verbCat_(cs, cat.BS(ct, cat.NP([FV.Ga])))
+        return verbCat_(cs, cat.BS(ct, cat.NP([feature.F([FV.Ga])])))
     if c == 'ヲ':
-        return verbCat_(cs, cat.BS(ct, cat.NP([FV.O])))
+        return verbCat_(cs, cat.BS(ct, cat.NP([feature.F([FV.O])])))
     if c == 'ニ':
-        return verbCat_(cs, cat.BS(ct, cat.NP([FV.Ni])))
+        return verbCat_(cs, cat.BS(ct, cat.NP([feature.F([FV.Ni])])))
     if c == 'ト':
-        return verbCat_(cs, cat.BS(ct, cat.Sbar([FV.ToCL])))
+        return verbCat_(cs, cat.BS(ct, cat.Sbar([feature.F([FV.ToCL])])))
     if c == 'ヨ':
-        return verbCat_(cs, cat.BS(ct, cat.NP([FV.Niyotte])))
+        return verbCat_(cs, cat.BS(ct, cat.NP([feature.F([FV.Niyotte])])))
     return verbCat_(cs, ct)
 
 

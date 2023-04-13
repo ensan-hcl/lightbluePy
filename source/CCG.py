@@ -509,8 +509,13 @@ def maximumIndexC(c: Cat) -> int:
 def maximumIndexF(fs: list[Feature]) -> int:
     m = 0
     for f in fs:
-        if isinstance(f, feature.SF):
-            m = max(m, f.index)
+        match f:
+            case feature.SF(i, _):
+                m = max(m, i)
+            case feature.F(_):
+                pass
+            case _:
+                raise Exception("Invalid feature")
     return m
 
 
@@ -532,13 +537,14 @@ def incrementIndexC(c: Cat, i: int) -> Cat:
 
 
 def incrementIndexF(fs: list[Feature], i: int) -> list[Feature]:
-    match fs:
-        case []:
-            return []
-        case [feature.SF(j, f2), *fs2]:
-            return [feature.SF(i+j, f2)] + incrementIndexF(fs2, i)
-        case [fh, *ft]:
-            return [fh] + incrementIndexF(ft, i)
+    results = []
+    for f in fs:
+        match f:
+            case feature.SF(j, f2):
+                results.append(feature.SF(i+j, f2))
+            case feature.F(_): results.append(f)
+            case _: raise Exception("Unknown feature.")
+    return results
 
 
 def alter(i: int, v: int, mp: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -707,7 +713,7 @@ def unifyCategory2(csub: Assignment[Cat], fsub: Assignment[list[FV]], banned: li
             return None
 
 
-def unifyWithHead(csub: Assignment[cat.Cat], fsub: Assignment[list[FV]], banned: list[int], c1: cat.Cat, c2: cat.Cat) -> Optional[tuple[cat.Cat, Assignment[cat.Cat], Assignment[list[FV]]]]:
+def unifyWithHead(csub: Assignment[Cat], fsub: Assignment[list[FV]], banned: list[int], c1: Cat, c2: Cat) -> Optional[tuple[Cat, Assignment[Cat], Assignment[list[FV]]]]:
     """
     unifies a cyntactic category `c1` (in `T True i c1`) with the head of `c2`, under a given feature assignment.
     """
@@ -740,7 +746,8 @@ def substituteFV(fsub: Assignment[list[FV]], f1: Feature) -> Feature:
         case feature.SF(i, v):
             j, v2 = fetchValue(fsub, i, v)
             return feature.SF(j, v2)
-        case _: return f1
+        case feature.F(_): return f1
+        case _: raise Exception("unrecognized feature")
 
 
 def simulSubstituteFV(fsub: Assignment[list[FV]], fs: list[Feature]) -> list[Feature]:
@@ -787,6 +794,7 @@ def unifyFeature(fsub: Assignment[list[FV]], f1: Feature, f2: Feature) -> Option
                 return None
             else:
                 return (feature.F(v3), fsub)
+        case _: raise Exception(f"unrecognized case {f1} {f2}")
 
 
 def unifyFeatures(fsub: Assignment[list[FV]], f1: list[Feature], f2: list[Feature]) -> Optional[tuple[list[Feature], Assignment[list[FV]]]]:
@@ -802,7 +810,7 @@ def unifyFeatures(fsub: Assignment[list[FV]], f1: list[Feature], f2: list[Featur
             if res is None:
                 return None
             f3t, fsub3 = res
-            return ([f3h, f3t], fsub3)
+            return ([f3h]+f3t, fsub3)
         case _: return None
 
 

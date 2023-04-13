@@ -106,7 +106,13 @@ def parse_sl_cat(tree: lark.Token) -> Cat:
 def parse_t_cat(tree: lark.Token) -> Cat:
     assert tree.data == "t_cat"
     assert len(tree.children) == 3
-    is_closed = tree.children[0] == "True"
+    match tree.children[0]:
+        case "True":
+            is_closed = True
+        case "False":
+            is_closed = False
+        case _:
+            raise Exception("Unknown boolean: " + tree.children[0])
     index = int(tree.children[1])
     restriction = parse_cat(tree.children[2])
     return cat.T(is_closed, index, restriction)

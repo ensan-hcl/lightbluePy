@@ -305,9 +305,64 @@ def numberOfArgs(c: Cat) -> int:
             raise Exception(f"unknown category {c}")
 
 
+def output_node(node: Node) -> str:
+    indent = "    "
+    newline = "\n"
+
+    def add_indent(s: str) -> str:
+        return newline.join([indent + line for line in s.split(newline)])
+    return f"""Node(
+{add_indent('rs       ='+str(node.rs))},
+{add_indent('pf       ='+node.pf)},
+{add_indent('cat      ='+output_cat(node.cat))},
+{add_indent('source   ='+node.source)},
+{add_indent('score    ='+str(node.score))},
+{add_indent('daughters=[' + newline.join([output_node(n) for n in node.daughters]) + ']')},
+)
+"""
+
+
+def output_cat(c1: Cat) -> str:
+    indent = "    "
+    newline = "\n"
+
+    def add_indent(s: str) -> str:
+        return newline.join([indent + line for line in s.split(newline)])
+    match c1:
+        case cat.SL(x, y):
+            return f"""SL(
+{add_indent(output_cat(x))}, 
+{add_indent(output_cat(y))}
+)"""
+        case cat.BS(x, y):
+            return f"""BS(
+{add_indent(output_cat(x))}, 
+{add_indent(output_cat(y))}
+)"""
+        case cat.T(b, i, c):
+            return f"""T(
+{indent}{b}, {i}, {output_cat(c)}
+)"""
+        case cat.S(f):
+            return f"S{f}"
+        case cat.NP(f):
+            return f"NP{f}"
+        case cat.Sbar(f):
+            return f"Sbar{f}"
+        case cat.N:
+            return "N"
+        case cat.CONJ:
+            return "CONJ"
+        case cat.LPAREN:
+            return "LPAREN"
+        case cat.RPAREN:
+            return "RPAREN"
+        case _:
+            raise Exception(f"unknown category {c1}")
+
+
 if __name__ == "__main__":
 
-    res = simpleParse(10, "文を処理するモデルです")
-    for r in res:
-        print((r.rs, r.pf, r.score))
-        print(r.daughters[0].cat)
+    res = simpleParse(10, "走る")
+    for r in res[:3]:
+        print(output_node(r))
