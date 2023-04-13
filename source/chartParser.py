@@ -61,16 +61,17 @@ quadruples representing a state during parsing:
 def chartAccumulator(beam: int, lexicon: list[Node], partialChart: PartialChart, c: str) -> PartialChart:
     chart, seplist, i, stack = partialChart
     print(c, stack)
+    newstack = c + stack
     if c == "、":
-        newchart = {((i, i+1), [andCONJ(c), emptyCM(c)]): chart.items()}
-        newstack = c + stack
+        # (foldl' (punctFilter sep i) [] $ M.toList chart);
+        newchart = {(i, i+1): [andCONJ(c), emptyCM(c)]} | {key: value for key, value in (reduce(lambda acc,
+                                                                                                e: punctFilter(seplist[0], i, acc, e), chart.copy().items(), []))}
         return (newchart, ([i+1] + seplist), (i+1), newstack)
     elif c == "。":
-        newchart = {((i, i+1), [andCONJ(c), emptyCM(c)]): chart.items()}
-        newstack = c + stack
+        newchart = {key: value for key, value in (reduce(lambda acc,
+                                                         e: punctFilter(seplist[0], i, acc, e),  chart.copy().items(), []))}
         return (newchart, ([i+1] + seplist), (i+1), newstack)
     else:
-        newstack = c + stack
         newchart, _, _, _ = reduce(lambda acc, c: boxAccumulator(
             beam, lexicon, acc, c), newstack, (chart.copy(), "", i, i+1))
         newseps = [i+1] + seplist if c in ["「",
@@ -82,9 +83,9 @@ def punctFilter(sep: int, i: int, charList: list[tuple[tuple[int, int], list[Nod
     from_, to = e[0]
     nodes = e[1]
     if to == i:
-        return (((from_, to+1), list(filter(lambda n: CCG.isBunsetsu(n.cat), nodes))), e) + charList
+        return [((from_, to+1), list(filter(lambda n: CCG.isBunsetsu(n.cat), nodes)))] + [e] + charList
     else:
-        return e + charList
+        return [e] + charList
 
 
 def andCONJ(c: str) -> Node:
@@ -92,7 +93,7 @@ def andCONJ(c: str) -> Node:
 
 
 def emptyCM(c: str) -> Node:
-    return lexicalitem(c, "punct", 99, cat.BS(cat.SL(cat.T(True, 1, modifiableS), cat.BS(cat.T(True, 1, modifiableS), cat.NP([feature.F([FV.Ga, FV.O])]))), feature.NP([FV.F([FV.Nc])])))
+    return lexicalitem(c, "punct", 99, cat.BS(cat.SL(cat.T(True, 1, modifiableS), cat.BS(cat.T(True, 1, modifiableS), cat.NP([feature.F([FV.Ga, FV.O])]))), cat.NP([feature.F([FV.Nc])])))
 
 
 PartialBox: TypeAlias = tuple[Chart, str, int, int]
@@ -107,7 +108,7 @@ def boxAccumulator(beam: int, lexicon: list[Node], partialBox: PartialBox, c: st
     newchart = {k: v for k, v in chart.items()}
     # ここのソートを実装する
     newchart[(i, j)] = sorted(
-        list1, key=lambda n: n.score, reverse=True)[:beam]
+        list1, key=lambda n: n.score, reverse=True)[: beam]
     return (newchart, newword, i-1, j)
 
 
@@ -317,7 +318,8 @@ def output_node(node: Node) -> str:
 {add_indent('cat      : '+output_cat(node.cat))},
 {add_indent('source   : '+node.source)},
 {add_indent('score    : '+str(node.score))},
-{add_indent('daughters: [' + newline.join([output_node(n) for n in node.daughters]) + ']')},
+{add_indent('daughters: [' + newline.join([output_node(n)
+            for n in node.daughters]) + ']')},
 )
 """
 
@@ -331,12 +333,12 @@ def output_cat(c1: Cat) -> str:
     match c1:
         case cat.SL(x, y):
             return f"""SL(
-{add_indent(output_cat(x))}, 
+{add_indent(output_cat(x))},
 {add_indent(output_cat(y))}
 )"""
         case cat.BS(x, y):
             return f"""BS(
-{add_indent(output_cat(x))}, 
+{add_indent(output_cat(x))},
 {add_indent(output_cat(y))}
 )"""
         case cat.T(b, i, c):
@@ -362,7 +364,6 @@ def output_cat(c1: Cat) -> str:
 
 
 if __name__ == "__main__":
-
-    res = simpleParse(10, "文を処理するモデルです")
+    res = simpleParse(10, "英語を話す")
     for r in res[:3]:
         print(output_node(r))

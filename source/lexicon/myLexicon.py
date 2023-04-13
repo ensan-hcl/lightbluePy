@@ -10,14 +10,14 @@ from lexicon.mylexicon_hs import empty_categories, my_lexicon
 import lark
 emptyCategories: list[Node] = []
 myLexicon: list[Node] = [
-    Node(
-        rs=RuleSymbol.LEX,
-        pf="太郎",
-        cat=cat.NP([feature.F([FV.Nc])]),
-        daughters=[],
-        score=1,
-        source="(original)"
-    )
+    # Node(
+    #     rs=RuleSymbol.LEX,
+    #     pf="太郎",
+    #     cat=cat.NP([feature.F([FV.Nc])]),
+    #     daughters=[],
+    #     score=1,
+    #     source="(original)"
+    # )
 
 ]
 

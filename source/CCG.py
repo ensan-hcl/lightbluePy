@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-# enum
-from enum import Enum
 from typing import TypeVar, Optional
 
 import cat
@@ -12,7 +9,7 @@ from feature import Feature
 from feature import FeatureValue as FV
 
 from lexicon.lexicon import constructPredicate
-from lexicon.myLexicon import load
+from lexicon.template import defS, verb
 
 
 def unifiable(f1: list[Feature], f2: list[Feature]) -> bool:
@@ -91,7 +88,7 @@ def isBunsetsu(c: Cat) -> bool:
                     katsuyo = feat
                 case feature.SF(_, feat):
                     katsuyo = feat
-            if not {FV.Cont, FV.Term, FV.Attr, FV.Hyp, FV.Imper, FV.Pre, FV.NTerm, FV.NStem, FV.TeForm, FV.NiForm} | katsuyo:
+            if not {FV.Cont, FV.Term, FV.Attr, FV.Hyp, FV.Imper, FV.Pre, FV.NTerm, FV.NStem, FV.TeForm, FV.NiForm} | set(katsuyo):
                 return False
             else:
                 return True
@@ -559,8 +556,8 @@ def fetchValue(sub: Assignment[T1], i: int, v: int) -> tuple[int, T1]:
     if not result:
         return (i, v)
     assert len(result) == 1
-
-    match result[0]:
+    _, data = result[0]
+    match data:
         case SubstLink(j):
             if j < i:
                 return fetchValue(sub, j, v)
@@ -569,7 +566,7 @@ def fetchValue(sub: Assignment[T1], i: int, v: int) -> tuple[int, T1]:
         # SubstVal[T1]の場合の処理
         case SubstVal(v2):
             return (i, v2)
-        case _: return (i, v)
+        case _: raise Exception("Unknown substitution.")
 
 
 def simulSubstituteCV(csub: Assignment[Cat], fsub: Assignment[list[FV]], c: Cat) -> Cat:
@@ -612,56 +609,48 @@ def unifyCategory2(csub: Assignment[Cat], fsub: Assignment[list[FV]], banned: li
                 return (c1, csub, fsub)
             ijmax = max(i, j)
             ijmin = min(i, j)
-            if f1 and f2:
-                res = unifyCategory2(csub, fsub, [ijmin]+banned, u1, u2)
-                if res is None:
-                    return None
-                (u3, csub2, fsub2) = res
-            elif f1:
-                res = unifyWithHead(csub, fsub, [ijmin]+banned, u1, u2)
-                if res is None:
-                    return None
-                (u3, csub2, fsub2) = res
-            elif f2:
-                res = unifyWithHead(csub, fsub, [ijmin]+banned, u2, u1)
-                if res is None:
-                    return None
-                (u3, csub2, fsub2) = res
-            else:
-                res = unifyCategory2(csub, fsub, [ijmin]+banned, u1, u2)
-                if res is None:
-                    return None
-                (u3, csub2, fsub2) = res
+            match (f1, f2):
+                case (True, True):
+                    res = unifyCategory2(csub, fsub, [ijmin]+banned, u1, u2)
+                    if res is None:
+                        return None
+                    (u3, csub2, fsub2) = res
+                case (True, False):
+                    res = unifyWithHead(csub, fsub, [ijmin]+banned, u1, u2)
+                    if res is None:
+                        return None
+                    (u3, csub2, fsub2) = res
+                case (False, True):
+                    res = unifyWithHead(csub, fsub, [ijmin]+banned, u2, u1)
+                    if res is None:
+                        return None
+                    (u3, csub2, fsub2) = res
+                case (False, False):
+                    res = unifyCategory2(csub, fsub, [ijmin]+banned, u1, u2)
+                    if res is None:
+                        return None
+                    (u3, csub2, fsub2) = res
+                case _: raise Exception("Unknown case.")
             result = cat.T(f1 and f2, ijmin, u3)
             return (result, alter(ijmin, SubstVal(result), alter(ijmax, SubstLink(ijmin), csub2)), fsub2)
         case (cat.T(f, i, u), _):
             if i in banned:
                 return None
-
-            if f:
-                res = unifyWithHead(csub, fsub, [i]+banned, u, c2)
-                if res is None:
-                    return None
-                (c3, csub2, fsub2) = res
-            else:
-                res = unifyCategory(csub, fsub, [i]+banned, u, c2)
-                if res is None:
-                    return None
-                (c3, csub2, fsub2) = res
+            res = unifyWithHead(csub, fsub, [i]+banned, u, c2
+                                ) if f else unifyCategory(csub, fsub, [i]+banned, u, c2)
+            if res is None:
+                return None
+            (c3, csub2, fsub2) = res
             return (c3, alter(i, SubstVal(c3), csub2), fsub2)
         case (_, cat.T(f, i, u)):
             if i in banned:
                 return None
-            if f:
-                res = unifyWithHead(csub, fsub, [i]+banned, u, c1)
-                if res is None:
-                    return None
-                (c3, csub2, fsub2) = res
-            else:
-                res = unifyCategory(csub, fsub, [i]+banned, u, c1)
-                if res is None:
-                    return None
-                (c3, csub2, fsub2) = res
+
+            res = unifyWithHead(csub, fsub, [i]+banned, u, c1
+                                ) if f else unifyCategory(csub, fsub, [i]+banned, u, c1)
+            if res is None:
+                return None
+            (c3, csub2, fsub2) = res
             return (c3, alter(i, SubstVal(c3), csub2), fsub2)
         case (cat.NP(f1), cat.NP(f2)):
             res = unifyFeatures(fsub, f1, f2)
@@ -968,9 +957,9 @@ def testBFC():
     assert result[0].pf == "長いです"
     assert result[0].cat == cat.BS(
         cat.S([
-            feature.SF(1, adjective),
+            feature.SF(1, [FV.Ai]),
             feature.F([FV.Term]),
-            feature.SF(2, [FV.P, FV.M]),
+            feature.SF(2, [FV.M]),
             feature.F([FV.P]),
             feature.F([FV.M]),
             feature.F([FV.M]),
@@ -983,8 +972,50 @@ def testBFC():
     assert result[0].source == ""
 
 
+"""
+    func testUnifyWithCategory() throws {
+        do {
+            let c1 = defS(verb, [.Stem, .Attr])
+            // c2のヘッド
+            let c2Head = defS([.V1], [.Stem]) // v1 \in verb
+            let c2 = Cat.BS(.BS(c2Head, .NP([.F([.Ga])])), Cat.SL(c2Head, .NP([.F([.O])])))
+            let tForHead = Cat.T(true, 1, c1)
+            let tNotForHead = Cat.T(false, 1, c1)
+            // unifyWithHeadは成功する
+            let uwh = unifyWithHead([], [], [], c1, c2)
+            XCTAssertNotNil(uwh)
+            // unifyCategoryはtForHeadに対してのみ成功する
+            let uct = unifyCategory([], [], [], tForHead, c2)
+            XCTAssertNotNil(uct)
+            let ucf = unifyCategory([], [], [], tNotForHead, c2)
+            XCTAssertNil(ucf)
+        }
+    }
+"""
+
+
+def testUnifyWithHead():
+    c1 = defS(verb, [FV.Stem, FV.Attr])
+    # c2のヘッド
+    c2Head = defS([FV.V1], [FV.Stem])  # v1 \in verb
+    c2 = cat.BS(cat.BS(c2Head, cat.NP([feature.F([FV.Ga])])),
+                cat.SL(c2Head, cat.NP([feature.F([FV.O])])))
+    tForHead = cat.T(True, 1, c1)
+    tNotForHead = cat.T(False, 1, c1)
+    # unifyWithHeadは成功する
+    uwh = unifyWithHead([], [], [], c1, c2)
+    assert uwh is not None
+    # unifyCategoryはtForHeadに対してのみ成功する
+    uct = unifyCategory([], [], [], tForHead, c2)
+    assert uct is not None
+    ucf = unifyCategory([], [], [], tNotForHead, c2)
+    assert ucf is None
+
+
 if __name__ == "__main__":
     testFFA()
     testBFA()
     testFFC()
     testBFC()
+
+    testUnifyWithHead()
