@@ -12,7 +12,7 @@ Daisuke Bekki氏の日本語CCGパーザであるlightblueをPythonに移植す�
 ## Environment
 
 * Python 3.10 or later
-* lark 1.1.5 
+* lark 1.1.5 or later (`pip install lark`)
 
 ## Usage
 ```python
