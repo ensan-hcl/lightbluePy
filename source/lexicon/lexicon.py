@@ -31,8 +31,21 @@ def setupLexicon(sentence: str) -> list[Node]:
     # 4. Accumulating common nons and proper names entries
     commonnouns = list(map(lambda l: lexicalitem(
         l[0], "(CN)", int(l[1][1]), cat.N), cn.items()))
-    propernames = list(map(lambda l: lexicalitem(l[0], "(PN)", int(l[1][1]), cat.BS(cat.SL(cat.T(True, 1, modifiableS), cat.BS(cat.T(
-        True, 1, modifiableS), cat.NP([feature.F([FV.Nc])]))), cat.NP([feature.F([FV.Nc])]))), pn.items()))
+    # ((`SL`
+    # (T True 1 modifiableS)
+    # (`BS`
+    #   (T True 1 modifiableS)
+    #   NP [F[Nc]]
+    # )
+    # ))
+    pn_cat = cat.SL(cat.T(True, 1, modifiableS),
+                    cat.BS(cat.T(True, 1, modifiableS),
+                           cat.NP([feature.F([FV.Nc])])
+                           )
+                    )
+
+    propernames = list(map(lambda l: lexicalitem(
+        l[0], "(PN)", int(l[1][1]), pn_cat), pn.items()))
     # 5. 1+2+3+4
     print([(lex.pf, lex.source, lex.rs) for lex in jumandicParsed])
     print([(lex.pf, lex.source) for lex in commonnouns])

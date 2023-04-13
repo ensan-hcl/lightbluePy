@@ -364,6 +364,6 @@ def output_cat(c1: Cat) -> str:
 
 
 if __name__ == "__main__":
-    res = simpleParse(10, "英語を話す")
+    res = simpleParse(10, "太郎を殴る")
     for r in res[:3]:
         print(output_node(r))
