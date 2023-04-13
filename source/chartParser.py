@@ -256,8 +256,8 @@ def extractParseResult(beam: int, chart: Chart) -> ParseResult:
         match cs:
             case []:
                 return results
-            case(((i, _), nodes), *_):
-                return g([CCG.conjoinNodes(x, y) for x in map(CCG.wrapNode, nodes) for y in results][:beam], list(filter(lambda x: x[0][1] <= i, cs)))
+            case(((i, _), nodes), *rest):
+                return g([CCG.conjoinNodes(x, y) for x in map(CCG.wrapNode, nodes) for y in results][:beam], list(filter(lambda x: x[0][1] <= i, rest)))
     # isLessPrivilegedThanのお気持ち：n文字のやつに対して(0, n)を最優先したい。なぜならこれが一番長い範囲をパースできているから。
     # したがって、まず右側が一番大きいものを、次に左側が一番小さいものを選ぶ
     return f(list(sorted(filter(lambda x: len(x[1]) > 0, chart.items()), key=lambda x: (x[0][1], -x[0][0]), reverse=True)))
@@ -312,12 +312,12 @@ def output_node(node: Node) -> str:
     def add_indent(s: str) -> str:
         return newline.join([indent + line for line in s.split(newline)])
     return f"""Node(
-{add_indent('rs       ='+str(node.rs))},
-{add_indent('pf       ='+node.pf)},
-{add_indent('cat      ='+output_cat(node.cat))},
-{add_indent('source   ='+node.source)},
-{add_indent('score    ='+str(node.score))},
-{add_indent('daughters=[' + newline.join([output_node(n) for n in node.daughters]) + ']')},
+{add_indent('rs       : '+str(node.rs))},
+{add_indent('pf       : '+node.pf)},
+{add_indent('cat      : '+output_cat(node.cat))},
+{add_indent('source   : '+node.source)},
+{add_indent('score    : '+str(node.score))},
+{add_indent('daughters: [' + newline.join([output_node(n) for n in node.daughters]) + ']')},
 )
 """
 
@@ -363,6 +363,6 @@ def output_cat(c1: Cat) -> str:
 
 if __name__ == "__main__":
 
-    res = simpleParse(10, "走る")
+    res = simpleParse(10, "文を処理するモデルです")
     for r in res[:3]:
         print(output_node(r))
