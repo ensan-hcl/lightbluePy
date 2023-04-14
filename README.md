@@ -15,10 +15,12 @@ Daisuke Bekki氏の日本語CCGパーザであるlightblueをPythonに移植す�
 * lark 1.1.5 or later (`pip install lark`)
 
 ## Usage
+Default `beam` for lightblue is `24`.
+
 ```python
 from chartParser import simpleParse, output_node
 
-res = simpleParse(10, "文を処理する")
+res = simpleParse(24, "文を処理する")
 for r in res:
     print(output_node(r))
 ```

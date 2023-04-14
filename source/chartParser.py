@@ -369,13 +369,18 @@ def testParse():
     res = simpleParse(10, "太郎を殴る")
     assert res[0].pf == "pro太郎を殴る"
     res = simpleParse(10, "傷ついた犬猫")
+    print([r.pf for r in res])
     assert res[0].pf == "pro傷ついたrel犬猫be-pred."
     res = simpleParse(10, "私が行きます")
     assert res[0].pf == "pro∃ 私が行きます"
+    res = simpleParse(20, "受け入れます")
+    assert res[0].pf == "propro受け入れcont-modます"
+    res = simpleParse(24, "当施設は傷ついた犬猫問わず受け入れます")
+    assert res[0].pf == "∃ 当施設は傷ついたrel∃ 犬猫cm問わずni-neg-modpro受け入れcont-modますrel"
 
 
 if __name__ == "__main__":
-    testParse()
-    res = simpleParse(10, "増す")
-    for r in res[:4]:
+    # testParse()
+    res = simpleParse(20, "当施設は傷ついた犬猫問わず受け入れます")
+    for r in res[:1]:
         print(output_node(r))
