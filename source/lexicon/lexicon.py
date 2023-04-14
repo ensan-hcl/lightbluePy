@@ -31,13 +31,6 @@ def setupLexicon(sentence: str) -> list[Node]:
     # 4. Accumulating common nons and proper names entries
     commonnouns = list(map(lambda l: lexicalitem(
         l[0], "(CN)", int(l[1][1]), cat.N), cn.items()))
-    # ((`SL`
-    # (T True 1 modifiableS)
-    # (`BS`
-    #   (T True 1 modifiableS)
-    #   NP [F[Nc]]
-    # )
-    # ))
     pn_cat = cat.SL(cat.T(True, 1, modifiableS),
                     cat.BS(cat.T(True, 1, modifiableS),
                            cat.NP([feature.F([FV.Nc])])
@@ -47,7 +40,7 @@ def setupLexicon(sentence: str) -> list[Node]:
     propernames = list(map(lambda l: lexicalitem(
         l[0], "(PN)", int(l[1][1]), pn_cat), pn.items()))
     # 5. 1+2+3+4
-    print([(lex.pf, lex.source, lex.rs) for lex in jumandicParsed])
+    print([(lex.pf, lex.source, lex.rs, lex.cat) for lex in jumandicParsed])
     print([(lex.pf, lex.source) for lex in commonnouns])
     print([(lex.pf, lex.source) for lex in mylexiconFiltered])
     print([(lex.pf, lex.source) for lex in propernames])
@@ -179,7 +172,7 @@ def constructPredicate(daihyo: str, posF: list[FV], conjF: list[FV]) -> list[Cat
 
 
 def constructCommonNoun(daihyo: str) -> list[Cat]:
-    return [cat.NP([feature.F([FV.Ga])])]
+    return [cat.N]
 
 
 def constructVerb(daihyo: str, caseframe: str, posF: list[FV], conjF: list[FV]) -> list[Cat]:

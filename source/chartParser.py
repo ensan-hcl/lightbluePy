@@ -104,11 +104,10 @@ def boxAccumulator(beam: int, lexicon: list[Node], partialBox: PartialBox, c: st
     newword = c + word
     list0 = lookupLexicon(newword, lexicon) if len(newword) < 23 else []
     list1 = checkEmptyCategories(checkParenthesisRule(i, j, chart, checkCoordinationRule(
-        i, j, chart, checkBinaryRules(i, j, chart, checkUnaryRules(list0)))))
+        i, j, chart, checkBinaryRules(i, j, chart, checkUnaryRules(list0.copy())))))
     newchart = {k: v for k, v in chart.items()}
-    # ここのソートを実装する
     newchart[(i, j)] = sorted(
-        list1, key=lambda n: n.score, reverse=True)[: beam]
+        list1, key=lambda n: n.score, reverse=True)[:beam]
     return (newchart, newword, i-1, j)
 
 
@@ -363,7 +362,20 @@ def output_cat(c1: Cat) -> str:
             raise Exception(f"unknown category {c1}")
 
 
-if __name__ == "__main__":
+def testParse():
+    # 本家実装との結果の一致を確認する
+    res = simpleParse(10, "当施設")
+    assert res[0].pf == "pro当施設be-pred."
     res = simpleParse(10, "太郎を殴る")
-    for r in res[:3]:
+    assert res[0].pf == "pro太郎を殴る"
+    res = simpleParse(10, "傷ついた犬猫")
+    assert res[0].pf == "pro傷ついたrel犬猫be-pred."
+    res = simpleParse(10, "私が行きます")
+    assert res[0].pf == "pro∃ 私が行きます"
+
+
+if __name__ == "__main__":
+    testParse()
+    res = simpleParse(10, "増す")
+    for r in res[:4]:
         print(output_node(r))
