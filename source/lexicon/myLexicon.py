@@ -9,17 +9,7 @@ from lexicon.mylexicon_hs import empty_categories, my_lexicon
 
 import lark
 emptyCategories: list[Node] = []
-myLexicon: list[Node] = [
-    # Node(
-    #     rs=RuleSymbol.LEX,
-    #     pf="太郎",
-    #     cat=cat.NP([feature.F([FV.Nc])]),
-    #     daughters=[],
-    #     score=1,
-    #     source="(original)"
-    # )
-
-]
+myLexicon: list[Node] = []
 
 
 def parse_fvs(tree: lark.Token) -> list[FV]:
@@ -182,15 +172,6 @@ def parse_cat(tree: lark.Token) -> Cat:
             raise Exception("Unknown cat type: " + child.data)
 
 
-"""
--- | defines a lexical entry for an empty category
-ec :: T.Text -> T.Text -> Integer -> Cat -> (Preterm, Signature) -> Node
-ec word num r c (s,sg) = Node {rs=EC, pf=word, cat=c, sem=s, daughters=[], score=(r % 100), source=num, sig=sg}
---ec pf source score cat sem sig = Node EC pf cat sem [] (score % 100) source sig
-
-"""
-
-
 def parse_string(value: str) -> str:
     return value[1:-1]
 
@@ -264,15 +245,6 @@ def parse_conjsuffix_declaration(tree: lark.Token) -> list[Node]:
     return conjSuffix(name, source, fvs1, fvs2)
 
 
-"""
--- | 活用語尾登録用マクロ
-
-conjNSuffix :: T.Text -> T.Text -> [FeatureValue] -> [FeatureValue] -> [Node]
-conjNSuffix wd num catpos catconj = [lexicalitem wd num 100 ((S ([SF 1 catpos, F catconj]++m5)) `BS` (S ([SF 1 catpos, F[NStem]]++m5))) (id,[])]
-
-"""
-
-
 def conjNSuffix(word: str, source: str, catpos: list[FV], catconj: list[FV]) -> list[Node]:
     return [lexicalitem(word, source, 100, cat.BS(
         cat.S([feature.SF(1, catpos), feature.F(catconj)] + m5),
@@ -290,13 +262,6 @@ def parse_conjnsuffix_declaration(tree: lark.Token) -> list[Node]:
     return conjNSuffix(name, source, fvs1, fvs2)
 
 
-"""
--- | 語彙項目登録用マクロ
-verblex :: [T.Text] -> T.Text -> [FeatureValue] -> [FeatureValue] -> T.Text -> T.Text -> Preterm -> [Node]
-verblex wds num posF conjF daihyo cf evt = [(lexicalitem wd num 100 (verbCat cf posF conjF) (verbSR daihyo evt cf))| wd <- wds ]
-"""
-
-
 def verblex(words: list[str], source: str, posF: list[FV], conjF: list[FV], daihyo: str, cf: str) -> list[Node]:
     return [lexicalitem(word, source, 100, verbCat(cf, posF, conjF)) for word in words]
 
@@ -310,9 +275,12 @@ def parse_verblex_declaration(tree: lark.Token) -> list[Node]:
     fvs1 = parse_fvs(tree.children[2])
     fvs2 = parse_fvs(tree.children[3])
     daihyo = parse_string(tree.children[4].value)
-    cf = parse_string(tree.children[5].value)
+    caseframes = parse_string(tree.children[5].value)
     # evt = parse_string(tree.children[6].children[0].value)
-    return verblex(strings, source, fvs1, fvs2, daihyo, cf)
+    result = []
+    for cf in caseframes.split("#"):
+        result += verblex(strings, source, fvs1, fvs2, daihyo, cf)
+    return result
 
 
 def load():

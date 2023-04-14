@@ -28,27 +28,6 @@ nonStem: list[FV] = [FV.Neg, FV.Cont, FV.Term, FV.Attr, FV.Hyp,
 modifiableS = cat.S([feature.SF(2, anyPos), feature.SF(3, nonStem), feature.SF(
     4, [FV.P, FV.M]), feature.SF(5, [FV.P, FV.M]), feature.SF(6, [FV.P, FV.M]), feature.F([FV.M]), feature.F([FV.M])])
 
-"""
-verbCat :: T.Text            -- ^ a case frame (e.g. "ガヲニ")
-           -> [FeatureValue] -- ^ a part-of-speech feature value
-           -> [FeatureValue] -- ^ a conjugational feature value
-           -> Cat
-verbCat caseframe posF conjF = verbCat' caseframe (defS posF conjF)
-
-verbCat' :: T.Text         -- ^ a case frame (e.g. "ガヲニ")
-           -> Cat          -- ^ a category to return (accumulated)
-           -> Cat
-verbCat' caseframe ct = case T.uncons caseframe of
-  Just (c,cs) | c == 'ガ' -> verbCat' cs $ ct `BS` NP [F[Ga]]
-              | c == 'ヲ' -> verbCat' cs $ ct `BS` NP [F[O]]
-              | c == 'ニ' -> verbCat' cs $ ct `BS` NP [F[Ni]]
-              | c == 'ト' -> verbCat' cs $ ct `BS` Sbar [F[ToCL]]
-              | c == 'ヨ' -> verbCat' cs $ ct `BS` NP [F[Niyotte]]
-              | otherwise -> verbCat' cs ct
-  Nothing-> ct
-
-"""
-
 
 def verbCat(caseframe: str, posF: list[FV], conjF: list[FV]) -> cat.Cat:
     return verbCat_(caseframe, defS(posF, conjF))
@@ -69,29 +48,12 @@ def verbCat_(caseframe: str, ct: cat.Cat) -> cat.Cat:
         return verbCat_(cs, cat.BS(ct, cat.Sbar([feature.F([FV.ToCL])])))
     if c == 'ヨ':
         return verbCat_(cs, cat.BS(ct, cat.NP([feature.F([FV.Niyotte])])))
-    return verbCat_(cs, ct)
+    if c == 'ノ':
+        # 無視する
+        return verbCat_(cs, ct)
+    raise Exception('invalid case frame' + c)
 
 
-"""
--- [F[M],F[M],F[M],F[M],F[M]]
-m5 :: [Feature]
-m5 = [F[M],F[M],F[M],F[M],F[M]]
-
-pmmmm :: [Feature]
-pmmmm = [F[P],F[M],F[M],F[M],F[M]]
-
-mpmmm :: [Feature]
-mpmmm = [F[M],F[P],F[M],F[M],F[M]]
-
-mmpmm :: [Feature]
-mmpmm = [F[M],F[M],F[P],F[M],F[M]]
-
-mmmpm :: [Feature]
-mmmpm = [F[M],F[M],F[M],F[P],F[M]]
-
-mppmm :: [Feature]
-mppmm = [F[M],F[P],F[P],F[M],F[M]]
-"""
 m5: list[Feature] = [feature.F([FV.M]), feature.F(
     [FV.M]), feature.F([FV.M]), feature.F([FV.M]), feature.F([FV.M])]
 pmmmm: list[Feature] = [feature.F([FV.P]), feature.F(
